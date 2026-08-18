@@ -1,0 +1,41 @@
+# David Philipp s.r.o. – statický web + kontaktní PHP formulář
+DirectoryIndex index.html
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+
+# HTTPS + kanonická varianta bez www
+RewriteCond %{HTTPS} !=on [OR]
+RewriteCond %{HTTP_HOST} ^www\.philippsro\.cz$ [NC]
+RewriteRule ^ https://philippsro.cz%{REQUEST_URI} [R=301,L]
+
+# Přesměrování hlavních původních Joomla URL na odpovídající sekce onepage webu
+RewriteRule ^cs/?$ / [R=301,L]
+RewriteRule ^cs/kdo-jsme-uvod/?$ /#o-nas [R=301,L,NE]
+RewriteRule ^cs/nase-filozofie/?$ /#filozofie [R=301,L,NE]
+RewriteRule ^cs/co-nabizime/?$ /#sluzby [R=301,L,NE]
+RewriteRule ^cs/proc-se-rozhodnout-pro-nas/?$ /#proc [R=301,L,NE]
+RewriteRule ^cs/kontakt/?$ /#kontakt [R=301,L,NE]
+</IfModule>
+
+<IfModule mod_headers.c>
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "SAMEORIGIN"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; object-src 'none'; img-src 'self'; style-src 'self'; script-src 'self'; font-src 'self'"
+
+<FilesMatch "\.(css|js|webp|png|jpg|jpeg|svg|ico)$">
+Header set Cache-Control "public, max-age=2592000, immutable"
+</FilesMatch>
+</IfModule>
+
+<IfModule mod_deflate.c>
+AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript application/json image/svg+xml
+</IfModule>
+
+# Na server se nemají nahrávat zálohy ani databázové exporty; kdyby tam omylem byly, zablokujeme je.
+<FilesMatch "\.(sql|sqlite|log|ini|bak|old)$">
+Require all denied
+</FilesMatch>
