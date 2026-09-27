@@ -1,0 +1,47 @@
+name: Compare GitHub with live philippsro.cz
+
+on:
+  push:
+    branches:
+      - "claude/web-redesign-modern-accessible-0kj2x8"
+  workflow_dispatch:
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.CH_SSH_KEY }}
+          CH_HOST: ${{ secrets.CH_HOST }}
+          CH_PORT: ${{ secrets.CH_PORT }}
+        run: |
+          set -euo pipefail
+          PORT="${CH_PORT:-22}"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$PORT" "$CH_HOST" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Compare repository with live server
+        env:
+          CH_HOST: ${{ secrets.CH_HOST }}
+          CH_USER: ${{ secrets.CH_USER }}
+          CH_PORT: ${{ secrets.CH_PORT }}
+          CH_PATH: ${{ secrets.CH_PATH }}
+        run: |
+          set -euo pipefail
+          PORT="${CH_PORT:-22}"
+          echo "=== Differences between GitHub and live server ==="
+          DIFFS="$(rsync -rcn --delete --itemize-changes             --exclude='.git/'             --exclude='.github/'             --exclude='README.txt'             --exclude='.ssh/'             -e "ssh -i ~/.ssh/deploy_key -p $PORT"             ./ "$CH_USER@$CH_HOST:$CH_PATH/" || true)"
+          if [ -z "$DIFFS" ]; then
+            echo "MATCH: GitHub deployment files and live server are identical."
+          else
+            echo "$DIFFS"
+            echo "DIFFERENCES_FOUND"
+          fi
