@@ -1,6 +1,9 @@
 name: Deploy philippsro.cz
 
 on:
+  push:
+    branches:
+      - "claude/web-redesign-modern-accessible-0kj2x8"
   workflow_dispatch:
 
 concurrency:
