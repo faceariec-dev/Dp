@@ -1,0 +1,56 @@
+name: Deploy philippsro.cz
+
+on:
+  push:
+    branches:
+      - "claude/web-redesign-modern-accessible-0kj2x8"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-philippsro
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.CH_SSH_KEY }}
+          CH_HOST: ${{ secrets.CH_HOST }}
+          CH_PORT: ${{ secrets.CH_PORT }}
+        run: |
+          set -euo pipefail
+          PORT="${CH_PORT:-22}"
+
+          if [ -z "${SSH_PRIVATE_KEY:-}" ] || [ -z "${CH_HOST:-}" ]; then
+            echo "Missing CH_SSH_KEY or CH_HOST secret."
+            exit 1
+          fi
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$PORT" "$CH_HOST" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy website via rsync
+        env:
+          CH_HOST: ${{ secrets.CH_HOST }}
+          CH_USER: ${{ secrets.CH_USER }}
+          CH_PORT: ${{ secrets.CH_PORT }}
+          CH_PATH: ${{ secrets.CH_PATH }}
+        run: |
+          set -euo pipefail
+          PORT="${CH_PORT:-22}"
+
+          if [ -z "${CH_USER:-}" ] || [ -z "${CH_PATH:-}" ]; then
+            echo "Missing CH_USER or CH_PATH secret."
+            exit 1
+          fi
+
+          rsync -az             --exclude='.git/'             --exclude='.github/'             --exclude='README.txt'             -e "ssh -i ~/.ssh/deploy_key -p $PORT"             ./ "$CH_USER@$CH_HOST:$CH_PATH/"
